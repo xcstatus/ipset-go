@@ -223,14 +223,12 @@ func (h *Handle) addDel(nlCmd int, setname string, entry *Entry) error {
 		data.AddChild(&nl.Uint32Attribute{Type: IPSET_ATTR_TIMEOUT | nl.NLA_F_NET_BYTEORDER, Value: *entry.Timeout})
 	}
 
-	family := nl.GetIPFamily(entry.IP)
-
 	if ip := entry.IP; ip != nil {
-		if family == nl.FAMILY_V4 {
-			ip = ip.To4()
+		nestedData, err := encodeIP(entry.IP)
+		if err != nil {
+			return err
 		}
-		nestedData := nl.NewRtAttr(IPSET_ATTR_IP|int(nl.NLA_F_NET_BYTEORDER), ip)
-		data.AddChild(nl.NewRtAttr(IPSET_ATTR_IP|int(nl.NLA_F_NESTED), nestedData.Serialize()))
+		data.AddChild(nl.NewRtAttr(nl.IPSET_ATTR_IP|int(nl.NLA_F_NESTED), nestedData.Serialize()))
 	}
 
 	if entry.MAC != nil {
@@ -242,11 +240,11 @@ func (h *Handle) addDel(nlCmd int, setname string, entry *Entry) error {
 	}
 
 	if ip := entry.IP2; ip != nil {
-		if family == nl.FAMILY_V4 {
-			ip = ip.To4()
+		nestedData, err := encodeIP(entry.IP2)
+		if err != nil {
+			return err
 		}
-		nestedData := nl.NewRtAttr(IPSET_ATTR_IP|int(nl.NLA_F_NET_BYTEORDER), ip)
-		data.AddChild(nl.NewRtAttr(IPSET_ATTR_IP2|int(nl.NLA_F_NESTED), nestedData.Serialize()))
+		data.AddChild(nl.NewRtAttr(nl.IPSET_ATTR_IP2|int(nl.NLA_F_NESTED), nestedData.Serialize()))
 	}
 
 	if entry.CIDR2 != 0 {
@@ -441,7 +439,7 @@ func parseIPSetEntry(data []byte) (entry Entry) {
 		case IPSET_ATTR_IP | nl.NLA_F_NESTED:
 			for attr := range nl.ParseAttributes(attr.Value) {
 				switch attr.Type {
-				case IPSET_ATTR_IP:
+				case nl.IPSET_ATTR_IPADDR_IPV4, nl.IPSET_ATTR_IPADDR_IPV6:
 					entry.IP = net.IP(attr.Value)
 				default:
 					log.Printf("unknown nested ADT attribute from kernel: %+v", attr)
@@ -450,7 +448,7 @@ func parseIPSetEntry(data []byte) (entry Entry) {
 		case IPSET_ATTR_IP2 | nl.NLA_F_NESTED:
 			for attr := range nl.ParseAttributes(attr.Value) {
 				switch attr.Type {
-				case IPSET_ATTR_IP:
+				case nl.IPSET_ATTR_IPADDR_IPV4, nl.IPSET_ATTR_IPADDR_IPV6:
 					entry.IP2 = net.IP(attr.Value)
 				default:
 					log.Printf("unknown nested ADT attribute from kernel: %+v", attr)
@@ -478,4 +476,16 @@ func parseIPSetEntry(data []byte) (entry Entry) {
 		}
 	}
 	return
+}
+
+func encodeIP(ip net.IP) (*nl.RtAttr, error) {
+	typ := int(nl.NLA_F_NET_BYTEORDER)
+	if ip4 := ip.To4(); ip4 != nil {
+		typ |= nl.IPSET_ATTR_IPADDR_IPV4
+		ip = ip4
+	} else {
+		typ |= nl.IPSET_ATTR_IPADDR_IPV6
+	}
+
+	return nl.NewRtAttr(typ, ip), nil
 }

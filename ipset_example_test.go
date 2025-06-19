@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func ExampleCreateAdd() {
+func ExampleCreate() {
 	var setname = "hash01"
 	err := Create(setname, TypeHashIP, CreateOptions{})
 	if err != nil {

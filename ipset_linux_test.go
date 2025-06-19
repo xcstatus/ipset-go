@@ -2,13 +2,13 @@ package ipset
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net"
+	"os"
 	"testing"
 )
 
 func TestParseIpsetProtocolResult(t *testing.T) {
-	msgBytes, err := ioutil.ReadFile("testdata/ipset_protocol_result")
+	msgBytes, err := os.ReadFile("testdata/ipset_protocol_result")
 	if err != nil {
 		t.Fatalf("reading test fixture failed: %v", err)
 	}
@@ -20,7 +20,7 @@ func TestParseIpsetProtocolResult(t *testing.T) {
 }
 
 func TestParseIpsetListResult(t *testing.T) {
-	msgBytes, err := ioutil.ReadFile("testdata/ipset_list_result")
+	msgBytes, err := os.ReadFile("testdata/ipset_list_result")
 	if err != nil {
 		t.Fatalf("reading test fixture failed: %v", err)
 	}
